@@ -8,26 +8,55 @@ COMPARE_TEMP_LIST1 = "1.txt"
 COMPARE_TEMP_LIST2 = "2.txt"
 RESULT_FILE = "Result.txt"
 
-COMPARE_ROOT_PATH_1 = "COMPARE_ROOT_PATH1"
-COMPARE_ROOT_PATH_2 = "COMPARE_ROOT_PATH2"
-NORMAL_COMPARE_RULE = 'COMPARE_NORMAL_RULE'
-EXIST_COMPARE_RULE  = 'COMPARE_EXIST_ONLY_RULE'
-CHST_OVERRIDE_COMPARE_RULE = 'COMPARE_CHST_OVERRIDE_RULE'
-ROOT_COMPARE_RULE   = 'COMPARE_ROOT_RULE'
+FEATURE_ROOT_PATH = "FEATURE_ROOT_PATH"
+CHIPSET_ROOT_PATH = "CHIPSET_ROOT_PATH"
+FEATURE_BOARD_PACKAGE_NAME = "FEATURE_BOARD_PACKAGE"
+CHIPSET_BOARD_PACKAGE_NAME = "CHIPSET_BOARD_PACKAGE"
+CHIPSET_PACKAGE_NAME = "CHIPSET_PACKAGE"
+
+#
+#  Verify rules are below.
+#  1. Check feature board package with new chipset board package.
+#  2. Check feature board package Include folder with chipset Include folder for Header file override.
+#  3. Check feature board package Include folder with kernel Include folder for Header file override.
+#  4. Check feature platform package with chipset root path and chipset package override folder.
+#
+#  COMPARE_NORMAL_RULE     = H19ApolloLakeBoardPkg;         ApolloLakeBoardPkg
+#  COMPARE_EXIST_ONLY_RULE = H19ApolloLakeBoardPkg\Include; BroxtonChipsetPkg\Include
+#  COMPARE_EXIST_ONLY_RULE = H19ApolloLakeBoardPkg\Include; InsydeModulePkg\Include
+#  COMPARE_ROOT_RULE       = InsydeH19PlatformPkg;          BroxtonChipsetPkg\Override
+COMPARE_BOARD_PACKAGE   = 0
+COMPARE_CHIPSET_INCLUDE = 1
+COMPARE_KERNEL_INCLUDE  = 2
+COMPARE_FEATURE_PLATFORM_PACKAGE = 3
+COMPARE_RULE_END = 4
+
+gCompareRuleList = {COMPARE_BOARD_PACKAGE, COMPARE_CHIPSET_INCLUDE, COMPARE_KERNEL_INCLUDE, COMPARE_FEATURE_PLATFORM_PACKAGE, COMPARE_RULE_END}
+
+
+gCmpFeatureRootPath = ''
+gCmpChipsetRootPath = ''
+gCmpFeatureBoardPkg = ''
+gCmpChipsetBoardPkg = ''
+gCmpChipsetPkg = ''
+gCmpKernelPkg = "InsydeModulePkg"
+gCmpFeaturePlatformPkg = "InsydeH19PlatformPkg"
 
 DEBUG_MODE = 1
 gConfigFile = ''
-gCmpRootPath1 = ''
-gCmpRootPath2 = ''
-gCompareRule  = ''
 
 #=========================================
 #    Get configure file setting.
 #=========================================
 def GetConfigSetting ():
   global gConfigFile
-  global gCmpRootPath1
-  global gCmpRootPath2
+  global gCmpFeatureRootPath
+  global gCmpChipsetRootPath
+  global gCmpFeatureRootPath
+  global gCmpChipsetRootPath
+  global gCmpFeatureBoardPkg
+  global gCmpChipsetBoardPkg
+  global gCmpChipsetPkg
 
   if len(sys.argv) != 2:
     print ("Usage: UpdateCodeHelper.exe CompareConfig.txt\n")
@@ -43,20 +72,42 @@ def GetConfigSetting ():
 
     for Line in ConfigFileBuf:
 
-      if Line.find (COMPARE_ROOT_PATH_1) != -1:
-        Line = Line.replace (' ', '')
-        Line = Line.replace ('\n', '')
-        gCmpRootPath1 = Line.split ('=') [1]
+      Line = Line.replace (' ', '')
+      Line = Line.replace ('\n', '')
 
-      elif Line.find (COMPARE_ROOT_PATH_2) != -1:
-        Line = Line.replace (' ', '')
-        Line = Line.replace ('\n', '')
-        gCmpRootPath2 = Line.split ('=') [1]
+      if Line.find ('=') != -1:
+        try:
+          EqualLeftOperator  = Line.split ('=') [0]
+          EqualRightOperator = Line.split ('=') [1]
+        except:
+          print ("  GetConfigSetting error! Can't parser config data!!!")
+          print ("  error data: " + Line)
+          sys.exit (1)
+
+        if EqualLeftOperator == FEATURE_ROOT_PATH:
+          gCmpFeatureRootPath = EqualRightOperator
+
+        elif EqualLeftOperator == CHIPSET_ROOT_PATH:
+          gCmpChipsetRootPath = EqualRightOperator
+
+        elif EqualLeftOperator == FEATURE_BOARD_PACKAGE_NAME:
+          gCmpFeatureBoardPkg = EqualRightOperator
+
+        elif EqualLeftOperator == CHIPSET_BOARD_PACKAGE_NAME:
+          gCmpChipsetBoardPkg = EqualRightOperator
+
+        elif EqualLeftOperator == CHIPSET_PACKAGE_NAME:
+          gCmpChipsetPkg = EqualRightOperator
     #endof for line in ConfigFileBuf:
 
     if DEBUG_MODE == 1:
-      print ("  gCmpRootPath1 = " + str (gCmpRootPath1))
-      print ("  gCmpRootPath2 = " + str (gCmpRootPath2))
+      print ("  FeatureRootPath = " + str (gCmpFeatureRootPath))
+      print ("  ChipsetRootPath = " + str (gCmpChipsetRootPath))
+      print ("  FeatureBoardPkg = " + str (gCmpFeatureBoardPkg))
+      print ("  ChipsetBoardPkg = " + str (gCmpChipsetBoardPkg))
+      print ("  KernelPkg       = " + str (gCmpKernelPkg))
+      print ("  ChipsetPkg      = " + str (gCmpChipsetPkg))
+#      os.system("pause")
 
   except:
     print ("  GetConfigSetting error! Can't open CompareConfig file!!!")
@@ -107,52 +158,47 @@ def CreateFile (FilePath, FileBuffer):
 #=========================================
 #    Create files lists to a txt file.
 #=========================================
-def CreateListFile (Line):
+def CreateListFile (CompareRule):
 
-  global gCompareRule
   CompareRuleString = ''
+  ChipsetOverridePath = ''
 
-  if Line.find (ROOT_COMPARE_RULE) != -1:
-    FirstPath = Line.split ('=') [1]
-    SecondPath = "Root"
-    CompletePath1 = gCmpRootPath1 + FirstPath
-    CompletePath2 = gCmpRootPath2
-    gCompareRule = ROOT_COMPARE_RULE
-    CompareRuleString = "ROOT_COMPARE_RULE"
+  if CompareRule == COMPARE_BOARD_PACKAGE:
+    FirstPath = gCmpFeatureBoardPkg
+    SecondPath = gCmpChipsetBoardPkg
+
+  elif CompareRule == COMPARE_CHIPSET_INCLUDE:
+    FirstPath = gCmpFeatureBoardPkg + '\\Include'
+    SecondPath = gCmpChipsetPkg + '\\Include'
+
+  elif CompareRule == COMPARE_KERNEL_INCLUDE:
+    FirstPath = gCmpFeatureBoardPkg + '\\Include'
+    SecondPath = gCmpKernelPkg + '\\Include'
+
+  elif CompareRule == COMPARE_FEATURE_PLATFORM_PACKAGE:
+    FirstPath = gCmpFeaturePlatformPkg
+    SecondPath = ''
+
   else:
-    if Line.find (NORMAL_COMPARE_RULE) != -1:
-      gCompareRule = NORMAL_COMPARE_RULE
-      CompareRuleString = "NORMAL_COMPARE_RULE"
-    elif Line.find (EXIST_COMPARE_RULE) != -1:
-      gCompareRule = EXIST_COMPARE_RULE
-      CompareRuleString = "COMPARE_EXIST_ONLY_RULE"
-    elif Line.find (CHST_OVERRIDE_COMPARE_RULE) != -1:
-      gCompareRule = CHST_OVERRIDE_COMPARE_RULE
-      CompareRuleString = "COMPARE_CHST_OVERRIDE_RULE"
-    else:
-      return "Others"
+    return "Others"
 
-    TempPath = Line.split ('=') [1]
-    FirstPath = TempPath.split (';') [0]
-    SecondPath = TempPath.split (';') [1]
-    CompletePath1 = gCmpRootPath1 + FirstPath
-    CompletePath2 = gCmpRootPath2 + SecondPath
+  CompletePath1 = gCmpFeatureRootPath + FirstPath
+  CompletePath2 = gCmpChipsetRootPath + SecondPath
 
   if DEBUG_MODE == 1:
-    print ("\n<CreateListFile>")
-    print ("  Compare Rule = " + CompareRuleString)
+    print ("\n\n<CreateListFile>")
     print ("  Complete path 1 = " + CompletePath1)
     print ("  Complete path 2 = " + CompletePath2)
     print ("  FirstPath  = " + FirstPath)
     print ("  SecondPath = " + SecondPath)
-    print ("  Now is creating list files, please wait...")
+    print ("  Now is creating file list, please wait...")
 
   #gen path 1 file list.
   DataBuffer = ''
   DataBuffer = GetFileListBuf (CompletePath1)
   CreateFile (COMPARE_TEMP_LIST1, DataBuffer)
 
-  #gen path 1 file list.
+  #gen path 2 file list.
   DataBuffer = ''
   DataBuffer = GetFileListBuf (CompletePath2)
   CreateFile (COMPARE_TEMP_LIST2, DataBuffer)
@@ -166,9 +212,8 @@ def CreateListFile (Line):
 #============================================
 #    Compare by argument file lists.
 #============================================
-def CompareByFileList (ListFile1, SubPath1, ListFile2, SubPath2):
+def CompareByFileList (CompareRule, ListFile1, SubPath1, ListFile2, SubPath2):
   try:
-    global gCompareRule
     FileFind = 0
     UnderlineFileFromFirst  = 0
     OutputBuffer = ''
@@ -177,23 +222,20 @@ def CompareByFileList (ListFile1, SubPath1, ListFile2, SubPath2):
     FirstSubPath = ''
     SecondSubPath = ''
 
-    if gCompareRule == NORMAL_COMPARE_RULE:
-      FirstRootPath  = gCmpRootPath2
-      SecondRootPath = gCmpRootPath1
-      FirstListFile  = ListFile2
-      SecondListFile = ListFile1
-      FirstSubPath  = SubPath2
-      SecondSubPath = SubPath1
-    elif gCompareRule == EXIST_COMPARE_RULE or gCompareRule == CHST_OVERRIDE_COMPARE_RULE or gCompareRule == ROOT_COMPARE_RULE:
-      FirstRootPath  = gCmpRootPath1
-      SecondRootPath = gCmpRootPath2
+    if CompareRule == COMPARE_FEATURE_PLATFORM_PACKAGE:
+      FirstRootPath  = gCmpFeatureRootPath
+      SecondRootPath = gCmpChipsetRootPath
       FirstListFile  = ListFile1
       SecondListFile = ListFile2
       FirstSubPath  = SubPath1
       SecondSubPath = SubPath2
     else:
-      print ("CompareByFileList error, compare rule is invalid!!!")
-      sys.exit (1)
+      FirstRootPath  = gCmpChipsetRootPath
+      SecondRootPath = gCmpFeatureRootPath
+      FirstListFile  = ListFile2
+      SecondListFile = ListFile1
+      FirstSubPath  = SubPath2
+      SecondSubPath = SubPath1
 
     if DEBUG_MODE == 1:
       print ("  First list file to compare  = " + FirstListFile)
@@ -224,18 +266,31 @@ def CompareByFileList (ListFile1, SubPath1, ListFile2, SubPath2):
           break
 
       #check original file exist?
-      if gCompareRule == ROOT_COMPARE_RULE:
-        OriginFilePath = SecondRootPath + TargetFile
-      else:
-        OriginFilePath = SecondRootPath + SecondSubPath + '\\' + TargetFile
-
-      print ("OriginFilePath="+OriginFilePath)
+      OriginFilePath = SecondRootPath + SecondSubPath + '\\' + TargetFile
       OriginFile = open (SecondListFile).read ()
-      if OriginFile.find (OriginFilePath + '_') != -1:
-        FileFind = 1
-        OriginFilePath = OriginFilePath + '_'
-      elif OriginFile.find (OriginFilePath) != -1:
-        FileFind = 1
+
+      #check chipset pacakge override folder first.
+      OriginFileOverridePath = ''
+      if CompareRule == COMPARE_FEATURE_PLATFORM_PACKAGE:
+        OriginFileOverridePath = SecondRootPath + gCmpChipsetPkg + "\\Override\\" + TargetFile
+        print ("OriginFileOverridePath=" + OriginFileOverridePath)
+        if OriginFile.find (OriginFileOverridePath + '_') != -1:
+          FileFind = 1
+          OriginFilePath = OriginFileOverridePath + '_'
+        elif OriginFile.find (OriginFileOverridePath) != -1:
+          FileFind = 1
+          OriginFilePath = OriginFileOverridePath
+        else:
+          OriginFilePath = SecondRootPath + TargetFile
+
+      if FileFind == 0:
+        if OriginFile.find (OriginFilePath + '_') != -1:
+          FileFind = 1
+          OriginFilePath = OriginFilePath + '_'
+        elif OriginFile.find (OriginFilePath) != -1:
+          FileFind = 1
+
+      print ("OriginFilePath=" + OriginFilePath)
 
       if FileFind == 1:
         print ("Compare")
@@ -246,7 +301,7 @@ def CompareByFileList (ListFile1, SubPath1, ListFile2, SubPath2):
           OutputBuffer = OutputBuffer + "Different      -" + TargetFilePath + "\n               -" + OriginFilePath + "\n"
 
       else:
-        if gCompareRule == NORMAL_COMPARE_RULE:
+        if CompareRule == COMPARE_BOARD_PACKAGE:
           OutputBuffer = OutputBuffer + "File not exit  -" + TargetFilePath + "\n"
 
     return OutputBuffer
@@ -261,31 +316,28 @@ def CompareByFileList (ListFile1, SubPath1, ListFile2, SubPath2):
 #============================================
 def StartCompare ():
   try:
-    if gCmpRootPath1 == '' or gCmpRootPath2 == '':
+    if gCmpFeatureRootPath == '' or gCmpChipsetRootPath == '':
       print ("Compare root path not find.")
       sys.exit (1)
 
     CompareResult = ''
 
     if DEBUG_MODE == 1:
-      print ("\n<StartCompare>")
+      print ("\n\n<StartCompare>")
 
-    ConfigFileBuf = open (gConfigFile).readlines ()
-    for Line in ConfigFileBuf:
-      #remove space and end of line symbol
-      Line = Line.replace (' ', '')
-      Line = Line.replace ('    ', '')
-      Line = Line.replace ('\n', '')
+    CompareRule = 0
+    for CompareRule in gCompareRuleList:
 
-      CreateListPath = CreateListFile (Line)
+      CreateListPath = CreateListFile (CompareRule)
 
       if CreateListPath == "Others":
         continue
+
       else:
         FirstPath = CreateListPath [0]
         SecondPath = CreateListPath [1]
 
-      NewResult = CompareByFileList (COMPARE_TEMP_LIST1, FirstPath, COMPARE_TEMP_LIST2, SecondPath)
+      NewResult = CompareByFileList (CompareRule, COMPARE_TEMP_LIST1, FirstPath, COMPARE_TEMP_LIST2, SecondPath)
       CompareResult = CompareResult + NewResult
 
     if CompareResult != '':
@@ -302,9 +354,20 @@ def StartCompare ():
 
 
 if __name__ == '__main__':
+
   #check argument and config file setting.
   GetConfigSetting ()
 
   #start compare.
   StartCompare ()
+
+  #remove list files.
+  try:
+    ListFileName = COMPARE_TEMP_LIST1
+    os.remove (ListFileName)
+    ListFileName = COMPARE_TEMP_LIST2
+    os.remove (ListFileName)
+  except:
+    print ('Remove list file ' + ListFileName + 'fail!!!')
+
   print ("\nUpdateCodeHelper complete!!!")

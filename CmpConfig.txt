@@ -1,8 +1,6 @@
-COMPARE_ROOT_PATH1 = D:\SourceCode\5.2_Trunk\Intel_KabyLake\
-COMPARE_ROOT_PATH2 = D:\SourceCode\5.2_KBL\
+FEATURE_ROOT_PATH = F:\SourceCode\APL_Trunk\
+CHIPSET_ROOT_PATH = F:\SourceCode\APL0928\
 
-COMPARE_NORMAL_RULE     = H19KabylakeMultiBoardPkg;         KabylakeMultiBoardPkg
-COMPARE_EXIST_ONLY_RULE = H19KabylakeMultiBoardPkg\Include; KabylakeChipsetPkg\Include
-COMPARE_EXIST_ONLY_RULE = H19KabylakeMultiBoardPkg\Include; InsydeModulePkg\Include
-COMPARE_CHST_OVERRIDE_RULE = InsydeH19PlatformPkg;             KabylakeChipsetPkg\Override
-COMPARE_ROOT_RULE       = InsydeH19PlatformPkg
+FEATURE_BOARD_PACKAGE = H19ApolloLakeBoardPkg
+CHIPSET_BOARD_PACKAGE = ApolloLakeBoardPkg
+CHIPSET_PACKAGE       = BroxtonChipsetPkg
