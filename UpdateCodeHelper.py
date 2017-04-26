@@ -3,10 +3,15 @@ import os
 import sys
 import filecmp
 from os.path import isdir, join
+from shutil import copyfile
 
 COMPARE_TEMP_LIST1 = "1.txt"
 COMPARE_TEMP_LIST2 = "2.txt"
 RESULT_FILE = "Result.txt"
+OUTPUT_SOLUTION_PATH = 'New\\'
+
+OUTPUT_DIFFERENT_LABEL = 'Different      -'
+OUTPUT_FILE_NOT_EXIST_LABEL = "File not exist -"
 
 FEATURE_ROOT_PATH = "FEATURE_ROOT_PATH"
 CHIPSET_ROOT_PATH = "CHIPSET_ROOT_PATH"
@@ -25,6 +30,11 @@ CHIPSET_PACKAGE_NAME = "CHIPSET_PACKAGE"
 #  COMPARE_EXIST_ONLY_RULE = H19ApolloLakeBoardPkg\Include; BroxtonChipsetPkg\Include
 #  COMPARE_EXIST_ONLY_RULE = H19ApolloLakeBoardPkg\Include; InsydeModulePkg\Include
 #  COMPARE_ROOT_RULE       = InsydeH19PlatformPkg;          BroxtonChipsetPkg\Override
+RULE_COMPARE_BOARD_PACKAGE = "COMPARE_BOARD_PACKAGE"
+RULE_COMPARE_CHIPSET_INCLUDE = "COMPARE_CHIPSET_INCLUDE"
+RULE_COMPARE_KERNEL_INCLUDE = "COMPARE_KERNEL_INCLUDE"
+RULE_COMPARE_FEATURE_PLATFORM_PACKAGE = "COMPARE_FEATURE_PLATFORM_PACKAGE"
+
 COMPARE_BOARD_PACKAGE   = 0
 COMPARE_CHIPSET_INCLUDE = 1
 COMPARE_KERNEL_INCLUDE  = 2
@@ -244,6 +254,15 @@ def CompareByFileList (CompareRule, ListFile1, SubPath1, ListFile2, SubPath2):
       print ("  Second sub path to compare = " + SecondSubPath)
       os.system("pause")
 
+    if CompareRule == COMPARE_BOARD_PACKAGE:
+      OutputBuffer = OutputBuffer + '\nCompareRule = ' + RULE_COMPARE_BOARD_PACKAGE + '\n'
+    elif CompareRule == COMPARE_CHIPSET_INCLUDE:
+      OutputBuffer = OutputBuffer + '\nCompareRule = ' + RULE_COMPARE_CHIPSET_INCLUDE + '\n'
+    elif CompareRule == COMPARE_KERNEL_INCLUDE:
+      OutputBuffer = OutputBuffer + '\nCompareRule = ' + RULE_COMPARE_KERNEL_INCLUDE + '\n'
+    elif CompareRule == COMPARE_FEATURE_PLATFORM_PACKAGE:
+      OutputBuffer = OutputBuffer + '\nCompareRule = ' + RULE_COMPARE_FEATURE_PLATFORM_PACKAGE + '\n'
+
     TargetFileBuffer = open (FirstListFile).readlines ()
     for TargetFilePath in TargetFileBuffer:
       FileFind = 0
@@ -298,11 +317,11 @@ def CompareByFileList (CompareRule, ListFile1, SubPath1, ListFile2, SubPath2):
         print ("  " + OriginFilePath)
 #          os.system("pause")
         if filecmp.cmp (TargetFilePath, OriginFilePath) != True:
-          OutputBuffer = OutputBuffer + "Different      -" + TargetFilePath + "\n               -" + OriginFilePath + "\n"
+          OutputBuffer = OutputBuffer + OUTPUT_DIFFERENT_LABEL + TargetFilePath + "\n               -" + OriginFilePath + "\n"
 
       else:
         if CompareRule == COMPARE_BOARD_PACKAGE:
-          OutputBuffer = OutputBuffer + "File not exit  -" + TargetFilePath + "\n"
+          OutputBuffer = OutputBuffer + OUTPUT_FILE_NOT_EXIST_LABEL + TargetFilePath + "\n"
 
     return OutputBuffer
 
@@ -310,6 +329,119 @@ def CompareByFileList (CompareRule, ListFile1, SubPath1, ListFile2, SubPath2):
     print ("CompareByFileList error!!!")
     sys.exit (1)
 #endof CompareByFileList (List1, List2):
+
+
+#===================================================
+#    Output result data files to a small solution.
+#===================================================
+def GenerateSmallSolution (CompareResult):
+
+  try:
+    #get result file data buffer.
+    print CompareResult
+
+    print ("<GenerateSmallSolution>\n  Copy different file to a small version solution!!!\n")
+
+    try:
+      index = 0
+      CompareRule = ''
+      TotalCount = len (CompareResult.split ('\n'))
+
+      while index < TotalCount - 1:
+        LineData = CompareResult.split ('\n') [index]
+
+        #get compare rule.
+        if LineData [0:len ('CompareRule = ')] == 'CompareRule = ':
+          CompareRule = LineData.split ("=") [1]
+          CompareRule = CompareRule.replace ('\n', '').replace (' ', '')
+#          print ('CompareRule=' + CompareRule)
+          index = index + 1
+          continue
+        #endof if LineData [0:len ('CompareRule = ')] == 'CompareRule = ':
+
+        #get Different string, start to copy data.
+        if LineData [0:len (OUTPUT_DIFFERENT_LABEL)] == OUTPUT_DIFFERENT_LABEL:
+          FilePath = ''
+          FileName = ''
+
+          #get target file path and file name.
+          LineData = LineData [len (OUTPUT_DIFFERENT_LABEL):]
+
+          if CompareRule == RULE_COMPARE_BOARD_PACKAGE: 
+            sourceFile = CompareResult.split ('\n') [index]  [len (OUTPUT_DIFFERENT_LABEL):]
+            destFile = CompareResult.split ('\n') [index + 1]
+            destFile = destFile [len (OUTPUT_DIFFERENT_LABEL) + len (gCmpFeatureRootPath):]
+
+          elif CompareRule == RULE_COMPARE_CHIPSET_INCLUDE or CompareRule == RULE_COMPARE_KERNEL_INCLUDE:
+            sourceFile = CompareResult.split ('\n') [index]  [len (OUTPUT_DIFFERENT_LABEL):]
+            destFile = CompareResult.split ('\n') [index + 1]
+            destFile = destFile [len (OUTPUT_DIFFERENT_LABEL) + len (gCmpFeatureRootPath):]
+
+          elif CompareRule == RULE_COMPARE_FEATURE_PLATFORM_PACKAGE:
+            sourceFile = CompareResult.split ('\n') [index + 1]  [len (OUTPUT_DIFFERENT_LABEL):]
+            destFile = CompareResult.split ('\n') [index]
+            destFile = destFile [len (OUTPUT_DIFFERENT_LABEL) + len (gCmpFeatureRootPath):]
+
+          DataLen = len (destFile)
+          while DataLen > 0:
+            if destFile [DataLen - 1] == '\\':
+              #get file path.
+              FilePath = destFile [0:DataLen]
+              if FilePath.find (gCmpChipsetRootPath) != -1:
+                FilePath = FilePath [len (gCmpChipsetRootPath) : ]
+              elif FilePath.find (gCmpFeatureRootPath) != -1:
+                FilePath = FilePath [len (gCmpFeatureRootPath) : ]
+              FilePath = OUTPUT_SOLUTION_PATH + FilePath
+
+              #get file name.
+              FileName = destFile [DataLen:]
+              break
+
+            DataLen = DataLen - 1
+          #end of while DataLen > 0:
+
+          #copy different file to output folder.
+          genFolderIndex = 0
+          genFolderSubIndex = 0
+          while genFolderIndex < len (FilePath) - 1:
+
+            #create folder by each layer.
+            while FilePath [genFolderSubIndex] != '\\':
+              genFolderSubIndex = genFolderSubIndex + 1
+
+            createFolderName = FilePath [:genFolderSubIndex]
+            #print ('createFolderName='+createFolderName)
+
+            try:
+              os.stat (createFolderName)
+            except:
+              os.mkdir (createFolderName)
+
+            genFolderIndex = genFolderSubIndex
+            genFolderSubIndex = genFolderSubIndex + 1
+          #end of while genFolderIndex > 0:
+
+          destFile = os.getcwd () + '\\' + OUTPUT_SOLUTION_PATH + destFile
+
+          try:
+            print ('  Source File = ' + sourceFile + '\n  Destination File = ' + destFile + '\n')
+            copyfile (sourceFile , destFile)
+          except:
+            print ('  Copy file fail!!!')
+            print ('  Source File = ' + sourceFile + '\n  Destination File = ' + destFile)
+            sys.exit (1)
+
+        index = index + 1
+      #endof if LineData [0:len (OUTPUT_DIFFERENT_LABEL)] == OUTPUT_DIFFERENT_LABEL:
+
+    except:
+      print (' ')
+
+  except:
+    print ("GenerateSmallSolution error!!!")
+    sys.exit (1)
+#endof GenerateSmallSolution ():
+
 
 #============================================
 #    Compare main function.
@@ -346,6 +478,9 @@ def StartCompare ():
     else:
       print ("These file is totally same!!!")
     #endof for Line in ConfigFileBuf
+
+    # gen small version solution.
+    GenerateSmallSolution (CompareResult)
 
   except:
     print ("CompareFolder error!!!")

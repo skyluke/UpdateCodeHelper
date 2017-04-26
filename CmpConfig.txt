@@ -1,6 +1,6 @@
-FEATURE_ROOT_PATH = F:\SourceCode\APL_Trunk\
-CHIPSET_ROOT_PATH = F:\SourceCode\APL0928\
+FEATURE_ROOT_PATH = F:\SourceCode\5.2_Trunk\Intel_SkyLake\
+CHIPSET_ROOT_PATH = F:\SourceCode\5.2_SKL16\
 
-FEATURE_BOARD_PACKAGE = H19ApolloLakeBoardPkg
-CHIPSET_BOARD_PACKAGE = ApolloLakeBoardPkg
-CHIPSET_PACKAGE       = BroxtonChipsetPkg
+FEATURE_BOARD_PACKAGE = H19SkylakeMultiBoardPkg
+CHIPSET_BOARD_PACKAGE = SkylakeMultiBoardPkg
+CHIPSET_PACKAGE       = SkylakeChipsetPkg
